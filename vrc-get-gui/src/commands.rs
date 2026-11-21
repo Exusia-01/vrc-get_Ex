@@ -48,6 +48,7 @@ macro_rules! localizable_error {
 mod async_command;
 pub(crate) use async_command::AsyncCommandContext;
 mod environment;
+mod ex;
 mod project;
 mod start;
 mod uri_custom_scheme;
@@ -141,6 +142,15 @@ pub(crate) fn handlers() -> impl Fn(Invoke) -> bool + Send + Sync + 'static {
         environment::unity_hub::environment_update_unity_paths_from_unity_hub,
         environment::unity_hub::environment_is_loading_from_unity_hub_in_progress,
         environment::unity_hub::environment_wait_for_unity_hub_update,
+        ex::ex_get_settings,
+        ex::ex_set_settings,
+        ex::ex_project_apply_pending_changes,
+        ex::ex_terminal_run,
+        ex::ex_upm_get_manifest,
+        ex::ex_upm_set_dependency,
+        ex::ex_upm_remove_dependency,
+        ex::ex_upm_add_scoped_registry,
+        ex::ex_upm_remove_scoped_registry,
         project::project_details,
         project::project_install_packages,
         project::project_reinstall_packages,
@@ -258,6 +268,15 @@ pub(crate) fn export_ts() {
             environment::unity_hub::environment_update_unity_paths_from_unity_hub,
             environment::unity_hub::environment_is_loading_from_unity_hub_in_progress,
             environment::unity_hub::environment_wait_for_unity_hub_update,
+            ex::ex_get_settings,
+            ex::ex_set_settings,
+            ex::ex_project_apply_pending_changes,
+            ex::ex_terminal_run,
+            ex::ex_upm_get_manifest,
+            ex::ex_upm_set_dependency,
+            ex::ex_upm_remove_dependency,
+            ex::ex_upm_add_scoped_registry,
+            ex::ex_upm_remove_scoped_registry,
             project::project_details,
             project::project_install_packages,
             project::project_reinstall_packages,

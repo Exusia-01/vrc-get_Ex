@@ -538,6 +538,121 @@ impl PendingProjectChanges<'_> {
     }
 }
 
+impl PendingProjectChanges<'_> {
+    /// ALCOM-Ex: removes the pending changes for the given packages so they
+    /// will not be applied, keeping every other change.
+    ///
+    /// This is used by the "exclude this dependency change" feature: when
+    /// installing a package would upgrade / downgrade / install / remove
+    /// another package as a side effect, the user may keep the current state
+    /// of selected packages instead.
+    ///
+    /// Safety: the exclusion is rejected (with human-readable reasons) when
+    /// - an excluded change is a directly requested one, or
+    /// - a package that is still being installed requires an excluded package
+    ///   at a version the project will not have after exclusion.
+    pub fn exclude_packages(
+        &mut self,
+        excluded: &HashSet<&str>,
+        unity_project: &UnityProject,
+    ) -> Result<(), Vec<String>> {
+        if excluded.is_empty() {
+            return Ok(());
+        }
+
+        let mut problems: Vec<String> = Vec::new();
+
+        // Phase 1: directly requested changes cannot be excluded.
+        for &name in excluded {
+            match self.package_changes.get(name) {
+                Some(PackageChange::Install(install)) if install.to_dependencies.is_some() => {
+                    problems.push(format!(
+                        "{name}: this package was directly requested and cannot be excluded"
+                    ));
+                }
+                Some(PackageChange::Remove(remove))
+                    if remove.reason() == RemoveReason::Requested =>
+                {
+                    problems.push(format!(
+                        "{name}: this removal was directly requested and cannot be excluded"
+                    ));
+                }
+                _ => {}
+            }
+        }
+        if !problems.is_empty() {
+            return Err(problems);
+        }
+
+        // Phase 2: compute the locked versions as they would be after
+        // applying the remaining (non-excluded) changes.
+        let mut resulting: HashMap<Box<str>, crate::version::Version> = HashMap::new();
+        for locked in unity_project.locked_packages() {
+            resulting.insert(locked.name().into(), locked.version().clone());
+        }
+        for (name, change) in &self.package_changes {
+            if excluded.contains(name.as_ref()) {
+                continue;
+            }
+            match change {
+                PackageChange::Install(install) => {
+                    if let Some(pkg) = install.install_package() {
+                        resulting.insert(name.clone(), pkg.version().clone());
+                    }
+                }
+                PackageChange::Remove(_) => {
+                    resulting.remove(name);
+                }
+            }
+        }
+
+        // Phase 3: every package still being installed must keep its
+        // dependencies satisfied by the resulting project state.
+        for (name, change) in &self.package_changes {
+            if excluded.contains(name.as_ref()) {
+                continue;
+            }
+            let Some(install) = change.as_install() else {
+                continue;
+            };
+            let Some(pkg) = install.install_package() else {
+                continue;
+            };
+            for (dep_name, range) in pkg.vpm_dependencies() {
+                if dep_name.as_ref() == name.as_ref() {
+                    continue;
+                }
+                match resulting.get(dep_name.as_ref()) {
+                    None => problems.push(format!(
+                        "{name} requires {dep_name} ({range}), but {dep_name} will not be \
+                         installed: its change was excluded and it is not currently installed"
+                    )),
+                    Some(version) if !range.matches(version) => problems.push(format!(
+                        "{name} requires {dep_name} ({range}), but {dep_name} will stay at \
+                         {version} because its change was excluded"
+                    )),
+                    _ => {}
+                }
+            }
+        }
+        if !problems.is_empty() {
+            return Err(problems);
+        }
+
+        // Phase 4: drop the excluded changes, their conflicts and the legacy
+        // asset removals owned by excluded packages.
+        self.package_changes
+            .retain(|name, _| !excluded.contains(name.as_ref()));
+        self.conflicts
+            .retain(|name, _| !excluded.contains(name.as_ref()));
+        self.remove_legacy_files
+            .retain(|(_, owner)| !excluded.contains(owner));
+        self.remove_legacy_folders
+            .retain(|(_, owner)| !excluded.contains(owner));
+        Ok(())
+    }
+}
+
 static TEMP_DIR: &str = "Temp";
 static PKG_TEMP_DIR: &str = "Temp/vrc-get";
 

@@ -71,6 +71,16 @@ pub struct TauriPendingProjectChanges {
     remove_legacy_folders: Vec<String>,
 
     conflicts: Vec<(String, TauriConflictInfo)>,
+
+    /// ALCOM-Ex: names of packages whose change was directly requested
+    /// (packages being added to the project dependencies, and requested
+    /// removals). Every other change is dependency-driven and may be
+    /// excluded by the user in the confirmation dialog.
+    ex_requested: Vec<String>,
+    /// ALCOM-Ex: for each package being installed, the VPM dependencies it
+    /// declares as `(dependency name, version range)` pairs. Used for the
+    /// collapsible dependency details in the confirmation dialog.
+    ex_dependencies: Vec<(String, Vec<(String, String)>)>,
 }
 
 impl TauriPendingProjectChanges {
@@ -96,6 +106,35 @@ impl TauriPendingProjectChanges {
                 .conflicts()
                 .iter()
                 .map(|(name, info)| (name.to_string(), info.into()))
+                .collect(),
+            ex_requested: changes
+                .package_changes()
+                .iter()
+                .filter_map(|(name, change)| match change {
+                    PackageChange::Install(install) if install.to_dependencies().is_some() => {
+                        Some(name.to_string())
+                    }
+                    PackageChange::Remove(remove)
+                        if remove.reason() == RemoveReason::Requested =>
+                    {
+                        Some(name.to_string())
+                    }
+                    _ => None,
+                })
+                .collect(),
+            ex_dependencies: changes
+                .package_changes()
+                .iter()
+                .filter_map(|(name, change)| {
+                    let pkg = change.as_install()?.install_package()?;
+                    Some((
+                        name.to_string(),
+                        pkg.vpm_dependencies()
+                            .iter()
+                            .map(|(dep_name, range)| (dep_name.to_string(), range.to_string()))
+                            .collect(),
+                    ))
+                })
                 .collect(),
         }
     }

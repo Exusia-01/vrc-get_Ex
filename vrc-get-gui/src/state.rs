@@ -9,6 +9,7 @@
 
 mod changes;
 mod config;
+mod ex_settings;
 mod packages;
 mod settings;
 mod templates;
@@ -17,6 +18,7 @@ mod updater;
 
 pub use changes::*;
 pub use config::*;
+pub use ex_settings::*;
 pub use packages::*;
 pub use settings::*;
 pub use templates::*;

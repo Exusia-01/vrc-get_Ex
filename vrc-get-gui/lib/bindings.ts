@@ -82,6 +82,15 @@ export const commands = {
 	projectResolve: (projectPath: string) => __TAURI_INVOKE<TauriPendingProjectChanges>("project_resolve", { projectPath }),
 	projectRemovePackages: (projectPath: string, names: string[]) => __TAURI_INVOKE<TauriPendingProjectChanges>("project_remove_packages", { projectPath, names }),
 	projectApplyPendingChanges: (projectPath: string, changesVersion: number) => __TAURI_INVOKE<null>("project_apply_pending_changes", { projectPath, changesVersion }),
+	exGetSettings: () => __TAURI_INVOKE<ExSettings>("ex_get_settings"),
+	exSetSettings: (settings: ExSettings) => __TAURI_INVOKE<null>("ex_set_settings", { settings }),
+	exProjectApplyPendingChanges: (projectPath: string, changesVersion: number, excludedPackages: string[]) => __TAURI_INVOKE<null>("ex_project_apply_pending_changes", { projectPath, changesVersion, excludedPackages }),
+	exTerminalRun: (cwd: string, command: string) => __TAURI_INVOKE<ExTerminalOutput>("ex_terminal_run", { cwd, command }),
+	exUpmGetManifest: (projectPath: string) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_get_manifest", { projectPath }),
+	exUpmSetDependency: (projectPath: string, name: string, versionOrUrl: string) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_set_dependency", { projectPath, name, versionOrUrl }),
+	exUpmRemoveDependency: (projectPath: string, name: string) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_remove_dependency", { projectPath, name }),
+	exUpmAddScopedRegistry: (projectPath: string, registry: ExUpmRegistry) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_add_scoped_registry", { projectPath, registry }),
+	exUpmRemoveScopedRegistry: (projectPath: string, name: string) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_remove_scoped_registry", { projectPath, name }),
 	projectClearPendingChanges: () => __TAURI_INVOKE<null>("project_clear_pending_changes"),
 	projectMigrateVrcUnity: (projectPath: string, version: TauriMigrateVrcUnityVersion) => __TAURI_INVOKE<null>("project_migrate_vrc_unity", { projectPath, version }),
 	projectCallUnityForMigration: (channel: string, projectPath: string, unityPath: string) => __TAURI_INVOKE<AsyncCallResult<string, TauriCallUnityForMigrationResult>>("project_call_unity_for_migration", { channel, projectPath, unityPath }),
@@ -134,6 +143,46 @@ export type AddRepositoryInfo = {
 };
 
 export type AsyncCallResult<P, R> = { type: "Result"; value: R } | { type: "Started" } | { type: "UnusedProgress"; progress: P };
+
+/* ALCOM-Ex types (hand-synced with src/state/ex_settings.rs and src/commands/ex.rs) */
+export type ExSettings = {
+	theme: ExThemeSettings,
+	terminal: ExTerminalSettings,
+	upm: ExUpmSettings,
+};
+
+export type ExThemeSettings = {
+	radius_rem: number | null,
+	gradient_start: string | null,
+	gradient_end: string | null,
+	accent_color: string | null,
+};
+
+export type ExTerminalSettings = {
+	last_project_path: string | null,
+};
+
+export type ExUpmSettings = {
+	registries: ExUpmRegistry[],
+};
+
+export type ExUpmRegistry = {
+	name: string,
+	url: string,
+	scopes: string[],
+};
+
+export type ExTerminalOutput = {
+	stdout: string,
+	stderr: string,
+	exit_code: number | null,
+	timed_out: boolean,
+};
+
+export type ExUpmManifest = {
+	dependencies: ([string, string])[],
+	scoped_registries: ExUpmRegistry[],
+};
 
 export type CheckForUpdateResponse = {
 	version: number,
@@ -341,6 +390,8 @@ export type TauriPendingProjectChanges = {
 	remove_legacy_files: string[],
 	remove_legacy_folders: string[],
 	conflicts: ([string, TauriConflictInfo])[],
+	ex_requested: string[],
+	ex_dependencies: ([string, ([string, string])[]])[],
 };
 
 export type TauriPickProjectBackupPathResult = { type: "NoFolderSelected" } | { type: "InvalidSelection" } | { type: "Successful" };

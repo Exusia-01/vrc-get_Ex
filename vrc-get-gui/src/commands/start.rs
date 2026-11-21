@@ -68,6 +68,9 @@ pub fn startup(app: &mut App) {
         let io = app.state::<DefaultEnvironmentIo>();
         let config = GuiConfigState::new_load(io.inner()).await?;
         app.manage(config);
+        // ALCOM-Ex: load the EX feature settings (vrc-get-ex/EX-settings.json)
+        let ex_settings = crate::state::ExSettingsState::new_load(io.inner()).await?;
+        app.manage(ex_settings);
 
         let handle = app.clone();
         spawn(async move {
