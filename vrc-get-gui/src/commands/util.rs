@@ -78,15 +78,19 @@ pub fn util_get_log_entries() -> Vec<LogEntry> {
 #[tauri::command]
 #[specta::specta]
 pub fn util_get_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+    // ALCOM-Ex: report the EX display version (e.g. `1.2.0-beta.2-@Ex 0.1.0`)
+    crate::ex::display_version()
 }
 
 pub async fn check_for_update(
     app_handle: AppHandle,
     stable: bool,
 ) -> updater::Result<Option<Update>> {
-    let endpoint = Url::parse(&updater::common::get_updater_url(stable)).unwrap();
-    updater::check_for_update(&app_handle, endpoint).await
+    // ALCOM-Ex: never check the stock ALCOM updater endpoint. Its manifests
+    // describe stock builds and applying one would replace ALCOM-Ex with
+    // stock ALCOM. ALCOM-Ex is updated by manually installing a new EX build.
+    let _ = (app_handle, stable);
+    Ok(None)
 }
 
 #[derive(serde::Serialize, specta::Type)]

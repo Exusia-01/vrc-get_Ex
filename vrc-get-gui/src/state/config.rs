@@ -140,12 +140,15 @@ async fn load_async(io: &DefaultEnvironmentIo) -> io::Result<GuiConfigStateInner
         }
     }
 
-    let path = io.resolve("vrc-get/gui-config.json".as_ref());
+    // ALCOM-Ex: the GUI config lives in the EX-dedicated folder with an
+    // EX-specific name so stock ALCOM (`vrc-get/gui-config.json`) is never
+    // read or written by ALCOM-Ex and vice versa.
+    let path = io.resolve(crate::ex::EX_GUI_CONFIG_PATH.as_ref());
 
     let config = match load_fs(&path).await {
         Ok(loaded) => loaded,
         Err(e) => {
-            log::error!("Failed to load gui-config.json, using default config: {e}");
+            log::error!("Failed to load EX-gui-config.json, using default config: {e}");
 
             // backup old config if possible
             if let Err(e) = backup_old_config(&path).await {

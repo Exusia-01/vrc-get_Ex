@@ -17,6 +17,7 @@ mod commands;
 mod compressor;
 mod config;
 mod deep_link_support;
+mod ex;
 mod logging;
 mod templates;
 #[cfg(any(windows, target_os = "macos", target_os = "linux"))]

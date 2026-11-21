@@ -1,5 +1,7 @@
-productName = "ALCOM"
-identifier = "com.anatawa12.vrc-get-gui"
+# ALCOM-Ex: product name and identifier are changed from stock ALCOM so that
+# ALCOM-Ex can be installed side-by-side with stock ALCOM and never replaces it.
+productName = "ALCOM-Ex"
+identifier = "com.anatawa12.vrc-get-gui.ex"
 
 [build]
 beforeBuildCommand = "npm run build"

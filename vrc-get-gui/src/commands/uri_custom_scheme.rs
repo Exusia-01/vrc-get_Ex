@@ -80,12 +80,9 @@ pub fn global_info_json(app: &AppHandle) -> Response<Cow<'static, [u8]>> {
     let webview_version = tauri::webview_version();
     let webview_version = webview_version.as_deref().unwrap_or("unknown");
 
-    // we do not support updater with rpm or deb
-    let check_for_updates = cfg_select! {
-        target_os = "macos" => true,
-        target_os = "windows" => true,
-        target_os = "linux" => app.env().appimage.is_some(),
-    };
+    // ALCOM-Ex: the stock updater endpoint serves stock ALCOM builds, which
+    // would overwrite ALCOM-Ex. EX never checks for stock updates.
+    let check_for_updates = false;
 
     let app_data = cfg_select! {
         windows => crate::os::app_data(),
@@ -97,7 +94,7 @@ pub fn global_info_json(app: &AppHandle) -> Response<Cow<'static, [u8]>> {
     let global_info = GlobalInfo {
         language: &config.language,
         theme: &config.theme,
-        version: Some(env!("CARGO_PKG_VERSION")),
+        version: Some(&crate::ex::DISPLAY_VERSION),
         commit_hash: option_env!("COMMIT_HASH"),
         os_type,
         arch,

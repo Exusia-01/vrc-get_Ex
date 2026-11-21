@@ -106,11 +106,10 @@ pub fn on_deep_link(deep_link: Url) {
 
 #[allow(unused_variables)]
 pub fn should_install_deep_link(app: &AppHandle) -> bool {
-    cfg_select! {
-        target_os = "macos" => false,
-        target_os = "windows" => true,
-        target_os = "linux" => app.env().appimage.is_some(),
-    }
+    // ALCOM-Ex: never take over the `vcc://` protocol handler or other deep
+    // link registrations. They belong to stock ALCOM / VCC; registering them
+    // from EX could break a side-by-side stock installation.
+    false
 }
 
 static IMPORTED_NON_TOASTED_COUNT: AtomicUsize = AtomicUsize::new(0);
