@@ -17,7 +17,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import type { ExSettings, ExThemeSettings } from "@/lib/bindings";
 import { exSettingsQuery, saveExSettings } from "@/lib/ex-settings";
-import { tc } from "@/lib/i18n";
+import { tc, tt } from "@/lib/i18n";
 import { toastThrownError } from "@/lib/toast";
 
 export function ExAppearanceSettings() {
@@ -69,17 +69,17 @@ export function ExAppearanceSettings() {
 			</label>
 
 			<ColorRow
-				label={tc("ex:settings:gradient start")}
+				label={tt("ex:settings:gradient start")}
 				value={theme.gradient_start}
 				onChange={(v) => updateTheme({ ...theme, gradient_start: v })}
 			/>
 			<ColorRow
-				label={tc("ex:settings:gradient end")}
+				label={tt("ex:settings:gradient end")}
 				value={theme.gradient_end}
 				onChange={(v) => updateTheme({ ...theme, gradient_end: v })}
 			/>
 			<ColorRow
-				label={tc("ex:settings:accent color")}
+				label={tt("ex:settings:accent color")}
 				value={theme.accent_color}
 				onChange={(v) => updateTheme({ ...theme, accent_color: v })}
 			/>
@@ -115,11 +115,7 @@ function ColorRow({
 				}
 				spellCheck={false}
 			/>
-			<Button
-				size={"sm"}
-				variant={"ghost"}
-				onClick={() => onChange(null)}
-			>
+			<Button size={"sm"} variant={"ghost"} onClick={() => onChange(null)}>
 				{tc("ex:settings:reset")}
 			</Button>
 		</label>

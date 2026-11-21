@@ -332,9 +332,9 @@ function ProjectChangesDialog({
 		});
 	};
 	const resolvedVersionOf = (packageId: string): string | null => {
-		const change = changeByPackage.get(packageId);
-		if (change && "InstallNew" in change) {
-			return toVersionString(change.InstallNew.version);
+		const installNew = changeByPackage.get(packageId)?.InstallNew;
+		if (installNew) {
+			return toVersionString(installNew.version);
 		}
 		const existing = existingPackageMap.get(packageId);
 		if (existing) {
@@ -629,10 +629,7 @@ function ExChangeControls({
 							"flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer"
 						}
 					>
-						<Checkbox
-							checked={isExcluded}
-							onCheckedChange={onToggleExcluded}
-						/>
+						<Checkbox checked={isExcluded} onCheckedChange={onToggleExcluded} />
 						{tc("projects:manage:dialog:ex:exclude this change")}
 					</label>
 				)}

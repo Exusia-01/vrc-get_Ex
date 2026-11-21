@@ -14,7 +14,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { commands } from "@/lib/bindings";
-import { tc } from "@/lib/i18n";
+import { tc, tt } from "@/lib/i18n";
 
 export function ExProjectSelector({
 	value,
@@ -55,7 +55,7 @@ export function ExProjectSelector({
 				className={
 					"bg-background border border-input rounded-md px-2 py-1.5 text-sm font-mono"
 				}
-				placeholder={tc("ex:project:path placeholder")}
+				placeholder={tt("ex:project:path placeholder")}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				spellCheck={false}

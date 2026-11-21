@@ -39,17 +39,22 @@ export const Route = createFileRoute("/_main/terminal/")({
 	component: Page,
 });
 
-type Line = { text: string; kind: "input" | "output" | "error" | "system" };
+type Line = {
+	id: number;
+	text: string;
+	kind: "input" | "output" | "error" | "system";
+};
 
 function Page() {
 	const exSettings = useQuery(exSettingsQuery);
 	const [projectPath, setProjectPath] = useState("");
 	const [lines, setLines] = useState<Line[]>([
-		{ text: tc("ex:terminal:welcome"), kind: "system" },
+		{ id: 0, text: tt("ex:terminal:welcome"), kind: "system" },
 	]);
 	const [input, setInput] = useState("");
 	const [history, setHistory] = useState<string[]>([]);
 	const historyIndex = useRef(-1);
+	const nextLineId = useRef(1);
 	const outputRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -58,8 +63,11 @@ function Page() {
 		}
 	}, [exSettings.data, projectPath]);
 
+	// scroll to the bottom whenever lines are appended
 	useEffect(() => {
-		outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight });
+		if (lines.length > 0) {
+			outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight });
+		}
 	}, [lines]);
 
 	const changeProject = (path: string) => {
@@ -72,20 +80,29 @@ function Page() {
 		}
 	};
 
-	const append = (newLines: Line[]) =>
-		setLines((prev) => [...prev.slice(-1000), ...newLines]);
+	const append = (newLines: Omit<Line, "id">[]) =>
+		setLines((prev) => [
+			...prev.slice(-1000),
+			...newLines.map((line) => ({ ...line, id: nextLineId.current++ })),
+		]);
 
 	const run = useMutation({
 		mutationFn: async (command: string) =>
 			await commands.exTerminalRun(projectPath, command),
 		onSuccess: (output, command) => {
-			const newLines: Line[] = [];
+			const newLines: Omit<Line, "id">[] = [];
 			if (output.stdout)
-				newLines.push({ text: output.stdout.replace(/\n$/, ""), kind: "output" });
+				newLines.push({
+					text: output.stdout.replace(/\n$/, ""),
+					kind: "output",
+				});
 			if (output.stderr)
-				newLines.push({ text: output.stderr.replace(/\n$/, ""), kind: "error" });
+				newLines.push({
+					text: output.stderr.replace(/\n$/, ""),
+					kind: "error",
+				});
 			if (output.timed_out) {
-				newLines.push({ text: tc("ex:terminal:timed out"), kind: "error" });
+				newLines.push({ text: tt("ex:terminal:timed out"), kind: "error" });
 			} else if (output.exit_code !== 0 && output.exit_code != null) {
 				newLines.push({
 					text: tt("ex:terminal:exit code", { code: output.exit_code }),
@@ -115,10 +132,14 @@ function Page() {
 			return;
 		}
 		if (lower === "help" || lower === "vrc-get help" || lower === "vrc-get") {
-			append([{ text: tc("ex:terminal:help"), kind: "system" }]);
+			append([{ text: tt("ex:terminal:help"), kind: "system" }]);
 			return;
 		}
-		if (lower === "vrc-get version" || lower === "vrc-get --version" || lower === "vrc-get -v") {
+		if (
+			lower === "vrc-get version" ||
+			lower === "vrc-get --version" ||
+			lower === "vrc-get -v"
+		) {
 			try {
 				const version = await commands.utilGetVersion();
 				append([{ text: `ALCOM-Ex v${version}`, kind: "output" }]);
@@ -128,7 +149,7 @@ function Page() {
 			return;
 		}
 		if (!projectPath) {
-			append([{ text: tc("ex:terminal:no project"), kind: "error" }]);
+			append([{ text: tt("ex:terminal:no project"), kind: "error" }]);
 			return;
 		}
 		run.mutate(command);
@@ -144,10 +165,7 @@ function Page() {
 			<HNavBar
 				leading={<HNavBarText>{tc("ex:terminal")}</HNavBarText>}
 				trailing={
-					<Button
-						variant={"ghost"}
-						onClick={() => setLines([])}
-					>
+					<Button variant={"ghost"} onClick={() => setLines([])}>
 						{tc("ex:terminal:button:clear")}
 					</Button>
 				}
@@ -163,9 +181,9 @@ function Page() {
 						"grow overflow-y-auto bg-neutral-950 text-neutral-100 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all"
 					}
 				>
-					{lines.map((line, i) => (
+					{lines.map((line) => (
 						<div
-							key={i}
+							key={line.id}
 							className={
 								line.kind === "error"
 									? "text-red-400"
@@ -180,7 +198,9 @@ function Page() {
 						</div>
 					))}
 					{run.isPending && (
-						<div className={"text-neutral-400"}>{tc("ex:terminal:running")}</div>
+						<div className={"text-neutral-400"}>
+							{tc("ex:terminal:running")}
+						</div>
 					)}
 				</div>
 				<div
@@ -195,7 +215,7 @@ function Page() {
 						}
 						value={input}
 						disabled={run.isPending}
-						placeholder={tc("ex:terminal:input placeholder")}
+						placeholder={tt("ex:terminal:input placeholder")}
 						onChange={(e) => setInput(e.target.value)}
 						onKeyDown={(e) => {
 							if (e.key === "Enter") {
@@ -218,7 +238,10 @@ function Page() {
 							}
 						}}
 						spellCheck={false}
-						autoFocus
+						ref={(el) => {
+							// focus the command input when the terminal opens
+							el?.focus();
+						}}
 					/>
 				</div>
 			</Card>

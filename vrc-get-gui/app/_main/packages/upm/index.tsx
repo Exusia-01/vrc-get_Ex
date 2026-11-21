@@ -35,9 +35,13 @@ import { HNavBar, VStack } from "@/components/layout";
 import { ScrollPageContainer } from "@/components/ScrollPageContainer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { commands, type ExUpmManifest, type ExUpmRegistry } from "@/lib/bindings";
+import {
+	commands,
+	type ExUpmManifest,
+	type ExUpmRegistry,
+} from "@/lib/bindings";
 import { exSettingsQuery, saveExSettings } from "@/lib/ex-settings";
-import { tc } from "@/lib/i18n";
+import { tc, tt } from "@/lib/i18n";
 import { toastSuccess, toastThrownError } from "@/lib/toast";
 import { HeadingPageName } from "../-tab-selector";
 
@@ -77,7 +81,7 @@ function Page() {
 		mutationFn: async (fn: () => Promise<ExUpmManifest>) => await fn(),
 		onSuccess: (next) => {
 			setManifest(next);
-			toastSuccess(tc("ex:upm:toast:manifest updated"));
+			toastSuccess(tt("ex:upm:toast:manifest updated"));
 		},
 		onError: (e) => {
 			console.error(e);
@@ -111,7 +115,7 @@ function Page() {
 				...exSettings.data,
 				upm: { registries },
 			});
-			toastSuccess(tc("ex:upm:toast:manifest updated"));
+			toastSuccess(tt("ex:upm:toast:manifest updated"));
 		} catch (e) {
 			toastThrownError(e);
 		}
@@ -130,9 +134,7 @@ function Page() {
 					{projectPath && manifest.data && (
 						<>
 							<Card className={"p-4 flex flex-col gap-2"}>
-								<h2 className={"font-bold"}>
-									{tc("ex:upm:dependencies")}
-								</h2>
+								<h2 className={"font-bold"}>{tc("ex:upm:dependencies")}</h2>
 								{manifest.data.dependencies.length === 0 && (
 									<p className={"text-sm"}>{tc("ex:upm:no dependencies")}</p>
 								)}
@@ -175,14 +177,14 @@ function Page() {
 								<div className={"flex gap-2 pt-2 flex-wrap"}>
 									<input
 										className={monoInputClass}
-										placeholder={tc("ex:upm:package name placeholder")}
+										placeholder={tt("ex:upm:package name placeholder")}
 										value={depName}
 										onChange={(e) => setDepName(e.target.value)}
 										spellCheck={false}
 									/>
 									<input
 										className={monoInputClass}
-										placeholder={tc("ex:upm:git url placeholder")}
+										placeholder={tt("ex:upm:git url placeholder")}
 										value={depValue}
 										onChange={(e) => setDepValue(e.target.value)}
 										spellCheck={false}
@@ -202,7 +204,9 @@ function Page() {
 										{tc("ex:upm:button:add dependency")}
 									</Button>
 								</div>
-								<p className={"text-xs text-muted-foreground whitespace-normal"}>
+								<p
+									className={"text-xs text-muted-foreground whitespace-normal"}
+								>
 									{tc("ex:upm:git hint")}
 								</p>
 							</Card>
@@ -252,21 +256,21 @@ function Page() {
 								<div className={"flex gap-2 pt-2 flex-wrap"}>
 									<input
 										className={inputClass}
-										placeholder={tc("ex:upm:registry name placeholder")}
+										placeholder={tt("ex:upm:registry name placeholder")}
 										value={regName}
 										onChange={(e) => setRegName(e.target.value)}
 										spellCheck={false}
 									/>
 									<input
 										className={monoInputClass}
-										placeholder={tc("ex:upm:registry url placeholder")}
+										placeholder={tt("ex:upm:registry url placeholder")}
 										value={regUrl}
 										onChange={(e) => setRegUrl(e.target.value)}
 										spellCheck={false}
 									/>
 									<input
 										className={monoInputClass}
-										placeholder={tc("ex:upm:registry scopes placeholder")}
+										placeholder={tt("ex:upm:registry scopes placeholder")}
 										value={regScopes}
 										onChange={(e) => setRegScopes(e.target.value)}
 										spellCheck={false}
@@ -340,21 +344,21 @@ function Page() {
 						<div className={"flex gap-2 pt-2 flex-wrap"}>
 							<input
 								className={inputClass}
-								placeholder={tc("ex:upm:registry name placeholder")}
+								placeholder={tt("ex:upm:registry name placeholder")}
 								value={exRegName}
 								onChange={(e) => setExRegName(e.target.value)}
 								spellCheck={false}
 							/>
 							<input
 								className={monoInputClass}
-								placeholder={tc("ex:upm:registry url placeholder")}
+								placeholder={tt("ex:upm:registry url placeholder")}
 								value={exRegUrl}
 								onChange={(e) => setExRegUrl(e.target.value)}
 								spellCheck={false}
 							/>
 							<input
 								className={monoInputClass}
-								placeholder={tc("ex:upm:registry scopes placeholder")}
+								placeholder={tt("ex:upm:registry scopes placeholder")}
 								value={exRegScopes}
 								onChange={(e) => setExRegScopes(e.target.value)}
 								spellCheck={false}
