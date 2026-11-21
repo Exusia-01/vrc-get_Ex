@@ -13,7 +13,8 @@ import { tc } from "@/lib/i18n";
 type PageType =
 	| "/packages/user-packages"
 	| "/packages/repositories"
-	| "/packages/templates";
+	| "/packages/templates"
+	| "/packages/upm";
 
 // Note: For historical reasons, templates page are under packages in route.
 
@@ -26,7 +27,7 @@ export function HeadingPageName({ pageType }: { pageType: PageType }) {
 		<div className={"flex compact:h-10 items-center"}>
 			<div
 				className={
-					"grid grid-cols-3 gap-1.5 bg-secondary p-1 rounded-md -m-1 compact:m-0"
+					"grid grid-cols-4 gap-1.5 bg-secondary p-1 rounded-md -m-1 compact:m-0"
 				}
 			>
 				<HeadingButton
@@ -46,6 +47,9 @@ export function HeadingPageName({ pageType }: { pageType: PageType }) {
 					targetPage={"/packages/templates"}
 				>
 					{tc("packages:templates")}
+				</HeadingButton>
+				<HeadingButton currentPage={pageType} targetPage={"/packages/upm"}>
+					{tc("packages:upm repositories")}
 				</HeadingButton>
 			</div>
 		</div>

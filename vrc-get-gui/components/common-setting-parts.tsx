@@ -200,7 +200,9 @@ const environmentGuiCompact = queryOptions({
 	initialData: false, // default value
 });
 
-export function GuiCompactSwitch() {
+/** ALCOM-Ex: shared compact-mode state and setter (used by the settings
+ * switch and by the sidebar toggle button). */
+export function useGuiCompact() {
 	const queryClient = useQueryClient();
 	const guiCompact = useQuery(environmentGuiCompact);
 	const setGuiCompact = useMutation({
@@ -231,12 +233,21 @@ export function GuiCompactSwitch() {
 		},
 	});
 
+	return {
+		guiCompact: guiCompact.data,
+		setGuiCompact: (value: boolean) => setGuiCompact.mutate(value),
+	};
+}
+
+export function GuiCompactSwitch() {
+	const { guiCompact, setGuiCompact } = useGuiCompact();
+
 	return (
 		<div>
 			<label className={"flex items-center gap-2"}>
 				<Checkbox
-					checked={guiCompact.data}
-					onCheckedChange={(e) => setGuiCompact.mutate(e === true)}
+					checked={guiCompact}
+					onCheckedChange={(e) => setGuiCompact(e === true)}
 				/>
 				{tc("settings:gui compact")}
 			</label>

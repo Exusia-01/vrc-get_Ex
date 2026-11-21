@@ -22,6 +22,7 @@ import type { LogEntry, TauriImportTemplateResult } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
 import { DialogRoot, openSingleDialog } from "@/lib/dialog";
 import { isFindKey, isLanguageCycleKey, useDocumentEvent } from "@/lib/events";
+import { loadExSettings } from "@/lib/ex-settings";
 import { cycleLanguage, tc } from "@/lib/i18n";
 import { processResult } from "@/lib/import-templates";
 import { queryClient } from "@/lib/query-client";
@@ -47,6 +48,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
 	useTauriListen<LogEntry>("log", (event) => {
 		showToastForLog(event.payload);
 	});
+
+	// ALCOM-Ex: load EX settings and apply the EX theme customization.
+	useEffect(() => {
+		loadExSettings().catch((e) => console.error(e));
+	}, []);
 
 	useEffect(() => {
 		commands.utilGetLogEntries().then((value) => {

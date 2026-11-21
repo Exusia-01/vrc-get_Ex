@@ -20,6 +20,7 @@ import type React from "react";
 import { Suspense, useEffect, useEffectEvent, useTransition } from "react";
 import Loading from "@/app/-loading";
 import { CheckForUpdateMessage } from "@/components/CheckForUpdateMessage";
+import { ExAppearanceSettings } from "@/components/ex-appearance-settings";
 import {
 	BackupFormatSelect,
 	BackupPathWarnings,
@@ -775,6 +776,7 @@ function AppearanceCard() {
 			<ThemeSelector />
 			<GuiAnimationSwitch />
 			<GuiCompactSwitch />
+			<ExAppearanceSettings />
 		</SettingsCard>
 	);
 }

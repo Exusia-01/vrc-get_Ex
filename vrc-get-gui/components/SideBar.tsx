@@ -20,8 +20,11 @@ import {
 	CircleAlert,
 	Info,
 	List,
+	Maximize2,
+	Minimize2,
 	Package,
 	Settings,
+	Terminal,
 	Wrench,
 } from "lucide-react";
 import type React from "react";
@@ -30,6 +33,7 @@ import {
 	GuiCompactSwitch,
 	LanguageSelector,
 	ThemeSelector,
+	useGuiCompact,
 } from "@/components/common-setting-parts";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -92,9 +96,15 @@ export function SideBar({ className }: { className?: string }) {
 				/>
 				<SideBarItem href={"/settings"} text={tc("settings")} icon={Settings} />
 				<SideBarItem href={"/log"} text={tc("logs")} icon={AlignLeft} />
+				<SideBarItem
+					href={"/terminal"}
+					text={tc("ex:terminal")}
+					icon={Terminal}
+				/>
 				{isDev && <DevMenu />}
 				<div className={"grow"} />
 				{isBadHostName.data && <BadHostNameDialogButton />}
+				<CompactToggleButton />
 				<SideBarButton
 					icon={Info}
 					showIconOnlyWhenCompact
@@ -133,6 +143,19 @@ function SideBarItem({
 			onClick={() => navigate({ to: href })}
 		>
 			{text}
+		</SideBarButton>
+	);
+}
+
+/** ALCOM-Ex: compact UI toggle placed right above the version info. */
+function CompactToggleButton() {
+	const { guiCompact, setGuiCompact } = useGuiCompact();
+	return (
+		<SideBarButton
+			icon={guiCompact ? Maximize2 : Minimize2}
+			onClick={() => setGuiCompact(!guiCompact)}
+		>
+			{tc("settings:gui compact")}
 		</SideBarButton>
 	);
 }

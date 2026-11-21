@@ -9,12 +9,13 @@
 
 import type { DefaultError } from "@tanstack/query-core";
 import { queryOptions, type UseMutationOptions } from "@tanstack/react-query";
-import { CircleAlert } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleAlert } from "lucide-react";
 import type React from "react";
-import { Fragment } from "react";
+import { Fragment, useState } from "react";
 import { DelayedButton } from "@/components/DelayedButton";
 import { ExternalLink } from "@/components/ExternalLink";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
 	DialogDescription,
 	DialogFooter,
@@ -126,19 +127,36 @@ export async function applyChanges(
 		)?.installed_packages;
 
 		const changes = await createChanges(projectPath, operation);
-		if (
-			!(await openSingleDialog(ProjectChangesDialog, {
-				changes,
-				existingPackages,
-			}))
-		) {
+		// ALCOM-Ex: the dialog returns the dependency-driven changes the
+		// user chose to exclude, or null when cancelled.
+		const excludedPackages = await openSingleDialog(ProjectChangesDialog, {
+			changes,
+			existingPackages,
+		});
+		if (excludedPackages == null) {
 			// close window
 			return;
 		}
-		await commands.projectApplyPendingChanges(
-			projectPath,
-			changes.changes_version,
-		);
+		if (excludedPackages.length > 0) {
+			try {
+				await commands.exProjectApplyPendingChanges(
+					projectPath,
+					changes.changes_version,
+					excludedPackages,
+				);
+			} catch (e) {
+				// Show why the exclusion cannot be applied and stop.
+				await openSingleDialog(ExclusionFailedDialog, {
+					message: errorMessage(e),
+				});
+				return;
+			}
+		} else {
+			await commands.projectApplyPendingChanges(
+				projectPath,
+				changes.changes_version,
+			);
+		}
 		showToast(operation);
 	} catch (e) {
 		if (isHandleable(e) && e.body.type === "MissingDependencies") {
@@ -149,6 +167,18 @@ export async function applyChanges(
 			throw e;
 		}
 	}
+}
+
+function errorMessage(e: unknown): string {
+	if (
+		typeof e === "object" &&
+		e !== null &&
+		"message" in e &&
+		typeof (e as { message: unknown }).message === "string"
+	) {
+		return (e as { message: string }).message;
+	}
+	return String(e);
 }
 
 function createChanges(
@@ -266,8 +296,52 @@ function ProjectChangesDialog({
 }: {
 	changes: TauriPendingProjectChanges;
 	existingPackages?: [string, TauriBasePackageInfo][];
-	dialog: DialogContext<boolean>;
+	// ALCOM-Ex: resolves with the excluded package ids on apply, null on cancel.
+	dialog: DialogContext<string[] | null>;
 }) {
+	// ALCOM-Ex: per-package exclusion of dependency-driven changes and
+	// collapsible dependency details.
+	const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
+	const [expandedDeps, setExpandedDeps] = useState<ReadonlySet<string>>(
+		new Set(),
+	);
+	const requestedPackages = new Set(changes.ex_requested);
+	const dependenciesByPackage = new Map(changes.ex_dependencies);
+	const changeByPackage = new Map(changes.package_changes);
+
+	const toggleExcluded = (packageId: string) => {
+		setExcluded((prev) => {
+			const next = new Set(prev);
+			if (next.has(packageId)) {
+				next.delete(packageId);
+			} else {
+				next.add(packageId);
+			}
+			return next;
+		});
+	};
+	const toggleExpandedDeps = (packageId: string) => {
+		setExpandedDeps((prev) => {
+			const next = new Set(prev);
+			if (next.has(packageId)) {
+				next.delete(packageId);
+			} else {
+				next.add(packageId);
+			}
+			return next;
+		});
+	};
+	const resolvedVersionOf = (packageId: string): string | null => {
+		const change = changeByPackage.get(packageId);
+		if (change && "InstallNew" in change) {
+			return toVersionString(change.InstallNew.version);
+		}
+		const existing = existingPackageMap.get(packageId);
+		if (existing) {
+			return toVersionString(existing.version);
+		}
+		return null;
+	};
 	const versionConflicts = changes.conflicts.filter(
 		([_, c]) => c.packages.length > 0,
 	);
@@ -339,6 +413,22 @@ function ProjectChangesDialog({
 							<p>{tc("projects:manage:dialog:note incompatibility")}</p>
 						</div>
 					)}
+					{excluded.size > 0 && (
+						<div
+							className={
+								"flex border border-solid border-warning mt-3 py-2 me-1.5"
+							}
+						>
+							<CircleAlert
+								className={"text-warning self-center mx-2 shrink-0"}
+							/>
+							<p>
+								{tc("projects:manage:dialog:ex:excluded count", {
+									count: excluded.size,
+								})}
+							</p>
+						</div>
+					)}
 				</DialogDescription>
 			</DialogHeader>
 			<div className="overflow-hidden flex">
@@ -354,7 +444,38 @@ function ProjectChangesDialog({
 									<Fragment key={category}>
 										{index !== 0 && <hr />}
 										{changes.map((change) => (
-											<PackageChange key={change.packageId} change={change} />
+											<div
+												key={change.packageId}
+												className={
+													excluded.has(change.packageId)
+														? "opacity-50"
+														: undefined
+												}
+											>
+												<PackageChange change={change} />
+												<ExChangeControls
+													change={change}
+													dependencies={dependenciesByPackage.get(
+														change.packageId,
+													)}
+													canExclude={
+														!requestedPackages.has(change.packageId) &&
+														change.type !==
+															PackageChangeCategory.UninstallRequested
+													}
+													isExcluded={excluded.has(change.packageId)}
+													onToggleExcluded={() =>
+														toggleExcluded(change.packageId)
+													}
+													isExpanded={expandedDeps.has(change.packageId)}
+													onToggleExpanded={() =>
+														toggleExpandedDeps(change.packageId)
+													}
+													resolvedVersionOf={resolvedVersionOf}
+													displayNameOf={getPackageDisplayName}
+													isDependencyExcluded={(id) => excluded.has(id)}
+												/>
+											</div>
 										))}
 									</Fragment>
 								);
@@ -440,16 +561,140 @@ function ProjectChangesDialog({
 				</ScrollArea>
 			</div>
 			<DialogFooter>
-				<Button onClick={() => dialog.close(false)} className="mr-1">
+				<Button onClick={() => dialog.close(null)} className="mr-1">
 					{tc("general:button:cancel")}
 				</Button>
 				<DelayedButton
-					onClick={() => dialog.close(true)}
+					onClick={() => dialog.close([...excluded])}
 					variant={needsCare ? "destructive" : "warning"}
 					delay={needsCare ? 1000 : 0}
 				>
 					{tc("projects:manage:button:apply")}
 				</DelayedButton>
+			</DialogFooter>
+		</div>
+	);
+}
+
+/** ALCOM-Ex: controls under each package change - a collapsible dependency
+ * detail list and, for dependency-driven changes, an exclusion checkbox. */
+function ExChangeControls({
+	change,
+	dependencies,
+	canExclude,
+	isExcluded,
+	onToggleExcluded,
+	isExpanded,
+	onToggleExpanded,
+	resolvedVersionOf,
+	displayNameOf,
+	isDependencyExcluded,
+}: {
+	change: PackageChangeDisplayInformation;
+	dependencies?: [string, string][];
+	canExclude: boolean;
+	isExcluded: boolean;
+	onToggleExcluded: () => void;
+	isExpanded: boolean;
+	onToggleExpanded: () => void;
+	resolvedVersionOf: (packageId: string) => string | null;
+	displayNameOf: (packageId: string) => string;
+	isDependencyExcluded: (packageId: string) => boolean;
+}) {
+	if (!dependencies?.length && !canExclude) return null;
+	return (
+		<div className={"flex flex-col gap-1 px-3 pb-2"}>
+			<div className={"flex items-center gap-3"}>
+				{dependencies && dependencies.length > 0 && (
+					<button
+						type={"button"}
+						className={
+							"flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+						}
+						onClick={onToggleExpanded}
+					>
+						{isExpanded ? (
+							<ChevronDown className={"size-4"} />
+						) : (
+							<ChevronRight className={"size-4"} />
+						)}
+						{tc("projects:manage:dialog:ex:dependencies", {
+							count: dependencies.length,
+						})}
+					</button>
+				)}
+				{canExclude && (
+					<label
+						className={
+							"flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer"
+						}
+					>
+						<Checkbox
+							checked={isExcluded}
+							onCheckedChange={onToggleExcluded}
+						/>
+						{tc("projects:manage:dialog:ex:exclude this change")}
+					</label>
+				)}
+			</div>
+			{isExpanded && dependencies && (
+				<ul className={"ml-6 flex flex-col gap-0.5 text-sm"}>
+					{dependencies.map(([depId, range]) => {
+						const resolved = resolvedVersionOf(depId);
+						return (
+							<li key={depId} className={"whitespace-normal"}>
+								<span>{displayNameOf(depId)}</span>{" "}
+								<span className={"font-mono text-xs"}>({depId})</span>
+								{": "}
+								{tc("projects:manage:dialog:ex:dependency requires", {
+									range,
+								})}{" "}
+								{resolved != null
+									? tc("projects:manage:dialog:ex:dependency resolved", {
+											version: resolved,
+										})
+									: tc("projects:manage:dialog:ex:dependency not installed")}
+								{isDependencyExcluded(depId) && (
+									<span className={"text-warning"}>
+										{" "}
+										{tc("projects:manage:dialog:ex:dependency excluded")}
+									</span>
+								)}
+							</li>
+						);
+					})}
+				</ul>
+			)}
+			{change.type === PackageChangeCategory.InstallNew && isExcluded && (
+				<p className={"text-sm text-warning whitespace-normal"}>
+					{tc("projects:manage:dialog:ex:excluded note")}
+				</p>
+			)}
+		</div>
+	);
+}
+
+/** ALCOM-Ex: shown when an exclusion cannot be applied safely. */
+function ExclusionFailedDialog({
+	message,
+	dialog,
+}: {
+	message: string;
+	dialog: DialogContext<void>;
+}) {
+	return (
+		<div className={"contents whitespace-normal"}>
+			<DialogHeader>
+				<DialogTitle className={"text-destructive"}>
+					<CircleAlert className="size-6 inline" />{" "}
+					{tc("projects:manage:dialog:ex:exclusion failed")}
+				</DialogTitle>
+			</DialogHeader>
+			<p className={"whitespace-pre-wrap text-sm"}>{message}</p>
+			<DialogFooter>
+				<Button onClick={() => dialog.close()}>
+					{tc("general:button:close")}
+				</Button>
 			</DialogFooter>
 		</div>
 	);
