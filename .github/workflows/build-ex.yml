@@ -1,0 +1,175 @@
+name: Build ALCOM-Ex
+
+# Builds ALCOM-Ex (the fork in this repository) for distribution.
+# The primary deliverable is the Windows portable zip. The NSIS installer
+# and the Linux / macOS binaries are best-effort extras.
+#
+# Note: upstream ALCOM releases use a custom releaser + xtask pipeline.
+# ALCOM-Ex intentionally uses a plain, self-contained pipeline instead:
+# vite frontend build + `tauri build` on the vrc-get-gui crate, whose
+# Tauri.toml already carries the EX product name / identifier.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "ex-v*"
+
+env:
+  GUI_DIR: vrc-get-gui
+
+jobs:
+  windows-portable:
+    name: Windows portable zip
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vrc-get-gui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.GUI_DIR }}
+        run: npm ci
+
+      - name: Build ALCOM-Ex (no bundling)
+        working-directory: ${{ env.GUI_DIR }}
+        env:
+          COMMIT_HASH: ${{ github.sha }}
+        run: npx tauri build --no-bundle
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          $version = (Get-Content vrc-get-gui/package.json -Raw | ConvertFrom-Json).exDisplayVersion
+          $stage = "ALCOM-Ex-$version-windows-portable"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Copy-Item "target/release/ALCOM-Ex.exe" $stage
+          Copy-Item "README-EX.md" $stage -ErrorAction SilentlyContinue
+          Compress-Archive -Path "$stage/*" -DestinationPath "$stage.zip"
+          echo "ARTIFACT=$stage.zip" >> $env:GITHUB_ENV
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-portable
+          path: ${{ env.ARTIFACT }}
+
+  windows-installer:
+    name: Windows NSIS installer (best effort)
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vrc-get-gui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.GUI_DIR }}
+        run: npm ci
+
+      # Upstream ships no Tauri bundle configuration (it uses a custom
+      # installer), so EX supplies a minimal NSIS bundle config overlay.
+      - name: Build NSIS installer
+        working-directory: ${{ env.GUI_DIR }}
+        env:
+          COMMIT_HASH: ${{ github.sha }}
+        run: npx tauri build --bundles nsis --config ../.github/ex-bundle.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: target/release/bundle/nsis/*.exe
+
+  linux:
+    name: Linux binary (best effort)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vrc-get-gui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsoup-3.0-dev libjavascriptcoregtk-4.1-dev
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.GUI_DIR }}
+        run: npm ci
+
+      - name: Build ALCOM-Ex (no bundling)
+        working-directory: ${{ env.GUI_DIR }}
+        env:
+          COMMIT_HASH: ${{ github.sha }}
+        run: npx tauri build --no-bundle
+
+      - name: Package tarball
+        run: |
+          VERSION=$(node -p "require('./vrc-get-gui/package.json').exDisplayVersion")
+          tar -czf "ALCOM-Ex-$VERSION-linux.tar.gz" -C target/release ALCOM-Ex
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: ALCOM-Ex-*-linux.tar.gz
+
+  macos:
+    name: macOS binary (best effort)
+    runs-on: macos-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: vrc-get-gui/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install frontend dependencies
+        working-directory: ${{ env.GUI_DIR }}
+        run: npm ci
+
+      - name: Build ALCOM-Ex (no bundling)
+        working-directory: ${{ env.GUI_DIR }}
+        env:
+          COMMIT_HASH: ${{ github.sha }}
+        run: npx tauri build --no-bundle
+
+      - name: Package zip
+        run: |
+          VERSION=$(node -p "require('./vrc-get-gui/package.json').exDisplayVersion")
+          zip "ALCOM-Ex-$VERSION-macos.zip" -j target/release/ALCOM-Ex
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: ALCOM-Ex-*-macos.zip
