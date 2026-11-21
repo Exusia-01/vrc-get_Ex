@@ -27,28 +27,55 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
-	--color-background: var(--background);
+	/* ALCOM-Ex: the neutral surfaces below are mixed with transparency by
+	   --ex-surface-opacity (set from the EX theme settings, 1 by default,
+	   floored at 0.3 so surfaces never become fully transparent). */
+	--color-background: color-mix(
+		in srgb,
+		var(--background) calc(var(--ex-surface-opacity, 1) * 100%),
+		transparent
+	);
 	--color-foreground: var(--foreground);
 
 	--color-primary: var(--primary);
 	--color-primary-foreground: var(--primary-foreground);
 
-	--color-secondary: var(--secondary);
+	--color-secondary: color-mix(
+		in srgb,
+		var(--secondary) calc(var(--ex-surface-opacity, 1) * 100%),
+		transparent
+	);
 	--color-secondary-foreground: var(--secondary-foreground);
 
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
 
-	--color-muted: var(--muted);
+	--color-muted: color-mix(
+		in srgb,
+		var(--muted) calc(var(--ex-surface-opacity, 1) * 100%),
+		transparent
+	);
 	--color-muted-foreground: var(--muted-foreground);
 
-	--color-accent: var(--accent);
+	--color-accent: color-mix(
+		in srgb,
+		var(--accent) calc(var(--ex-surface-opacity, 1) * 100%),
+		transparent
+	);
 	--color-accent-foreground: var(--accent-foreground);
 
-	--color-popover: var(--popover);
+	--color-popover: color-mix(
+		in srgb,
+		var(--popover) calc(var(--ex-surface-opacity, 1) * 100%),
+		transparent
+	);
 	--color-popover-foreground: var(--popover-foreground);
 
-	--color-card: var(--card);
+	--color-card: color-mix(
+		in srgb,
+		var(--card) calc(var(--ex-surface-opacity, 1) * 100%),
+		transparent
+	);
 	--color-card-foreground: var(--card-foreground);
 
 	--color-info: var(--info);
@@ -324,6 +351,16 @@ html {
 .vrc-get-sidebar-hostname-warning-container {
 	contain-intrinsic-size: 0 7em;
 	contain: size;
+}
+
+/*
+ * ALCOM-Ex: independent corner radius for section windows (cards and
+ * dialog contents), enabled by the `ex-surface-radius` class on <html>
+ * plus the --ex-surface-radius variable from the EX theme settings.
+ */
+html.ex-surface-radius [data-slot="card"],
+html.ex-surface-radius [data-slot="dialog-content"] {
+	border-radius: var(--ex-surface-radius);
 }
 
 .fade-in {

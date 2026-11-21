@@ -33,7 +33,11 @@ import { ScrollableCardTable } from "@/components/ScrollableCardTable";
 import { SearchBox } from "@/components/SearchBox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import {
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -1245,6 +1249,63 @@ const PackageVersionSelector = memo(function PackageVersionSelector({
 
 	const [isOpen, setIsOpen] = useState(false);
 
+	// ALCOM-Ex: Alt+click on a version in the dropdown shows that
+	// version's dependencies instead of selecting it. Radix Select items
+	// select on pointer-up, so Alt presses are intercepted at the
+	// document level in the capture phase while the dropdown is open.
+	const showDependencies = useCallback(
+		async (version: string) => {
+			try {
+				const dependencies = await commands.exGetPackageDependencies(
+					pkg.id,
+					version,
+				);
+				await openSingleDialog(VersionDependenciesDialog, {
+					name: pkg.id,
+					displayName: pkg.displayName,
+					version,
+					dependencies,
+				});
+			} catch (e) {
+				console.error(e);
+				toastThrownError(e);
+			}
+		},
+		[pkg.id, pkg.displayName],
+	);
+
+	useEffect(() => {
+		if (!isOpen) return;
+		const intercept = (e: PointerEvent) => {
+			if (!e.altKey) return;
+			const option = (e.target as HTMLElement | null)?.closest?.(
+				'[role="option"]',
+			);
+			if (!option) return;
+			e.preventDefault();
+			e.stopPropagation();
+			if (e.type !== "pointerdown") return;
+			const version = option.textContent?.trim() ?? "";
+			if (
+				!pkg.unityCompatible.has(version) &&
+				!pkg.unityIncompatible.has(version)
+			)
+				return;
+			setIsOpen(false);
+			void showDependencies(version);
+		};
+		document.addEventListener("pointerdown", intercept, { capture: true });
+		document.addEventListener("pointerup", intercept, { capture: true });
+		document.addEventListener("click", intercept, { capture: true });
+		return () => {
+			document.removeEventListener("pointerdown", intercept, {
+				capture: true,
+			});
+			document.removeEventListener("pointerup", intercept, { capture: true });
+			document.removeEventListener("click", intercept, { capture: true });
+		};
+	}, [isOpen, pkg, showDependencies]);
+
 	return (
 		<Select
 			value={selectedVersion}
@@ -1253,7 +1314,7 @@ const PackageVersionSelector = memo(function PackageVersionSelector({
 			open={isOpen}
 			onOpenChange={setIsOpen}
 		>
-			<SelectTrigger>
+			<SelectTrigger title={tt("projects:manage:ex:alt click hint")}>
 				<SelectValue
 					asChild
 					placeholder={<PackageInstalledInfo pkg={pkg} />}
@@ -1301,6 +1362,54 @@ function PackageVersionList({
 				</SelectItem>
 			))}
 		</SelectGroup>
+	);
+}
+
+/** ALCOM-Ex: shows the dependencies declared by one package version. */
+function VersionDependenciesDialog({
+	name,
+	displayName,
+	version,
+	dependencies,
+	dialog,
+}: {
+	name: string;
+	displayName: string;
+	version: string;
+	dependencies: [string, string][];
+	dialog: DialogContext<void>;
+}) {
+	return (
+		<div className={"contents whitespace-normal"}>
+			<DialogHeader>
+				<DialogTitle>
+					{tc("projects:manage:dialog:ex:version dependencies", {
+						name: displayName,
+						version,
+					})}
+				</DialogTitle>
+			</DialogHeader>
+			<p className={"font-mono text-xs opacity-70"}>{name}</p>
+			{dependencies.length === 0 ? (
+				<p className={"text-sm"}>
+					{tc("projects:manage:dialog:ex:no dependencies")}
+				</p>
+			) : (
+				<ul className={"list-disc pl-5 text-sm flex flex-col gap-1"}>
+					{dependencies.map(([depName, range]) => (
+						<li key={depName}>
+							<span>{depName}</span>{" "}
+							<span className={"font-mono text-xs opacity-70"}>{range}</span>
+						</li>
+					))}
+				</ul>
+			)}
+			<DialogFooter>
+				<Button onClick={() => dialog.close()}>
+					{tc("general:button:close")}
+				</Button>
+			</DialogFooter>
+		</div>
 	);
 }
 

@@ -41,6 +41,37 @@ pub struct ExThemeSettings {
     /// Accent color (any CSS color) applied to primary / ring / accent
     /// variables. `None` keeps the stock color scheme.
     pub accent_color: Option<String>,
+    /// Opt-in: when an accent color is set, automatically pick a readable
+    /// (black or white) foreground color for text on the accent color.
+    /// `false` (default) keeps the stock behavior exactly.
+    pub accent_auto_contrast: bool,
+    /// Opacity (0.3..=1.0) of the neutral section surfaces (card, popover,
+    /// secondary, muted, accent). The 0.3 floor keeps surfaces from
+    /// becoming fully transparent. `None` keeps the stock opaque surfaces.
+    pub surface_opacity: Option<f64>,
+    /// Corner radius in rem applied to section windows (cards and dialog
+    /// contents), independently from `radius_rem`. `None` keeps stock.
+    pub surface_radius_rem: Option<f64>,
+    /// File name (inside the EX config folder) of the background image
+    /// copied there by `ex_pick_background_image`. `None` shows no image.
+    pub background_image: Option<String>,
+    /// Opacity (0.0..=1.0) of the background image layer, composited over
+    /// the gradient background. `None` means fully opaque.
+    pub bg_image_opacity: Option<f64>,
+    /// How the background image is sized: `cover`, `contain`,
+    /// `window-width`, `window-height` or `natural`. Aspect ratio is
+    /// always preserved. `None` means `cover`.
+    pub bg_image_fit: Option<String>,
+    /// Anchor position of the background image: `center`, `top`, `bottom`,
+    /// `left`, `right`, `top-left`, `top-right`, `bottom-left` or
+    /// `bottom-right`. `None` means `center`.
+    pub bg_image_position: Option<String>,
+    /// Edge fade (gradient transparency) in percent (0..=50) for each side
+    /// of the background image. `None` means no fade on that side.
+    pub bg_fade_top: Option<f64>,
+    pub bg_fade_bottom: Option<f64>,
+    pub bg_fade_left: Option<f64>,
+    pub bg_fade_right: Option<f64>,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize, specta::Type)]

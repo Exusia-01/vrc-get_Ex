@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { ToastContainer } from "react-toastify";
 import Loading from "@/app/-loading";
 import { CheckForUpdateMessage } from "@/components/CheckForUpdateMessage";
+import { ExBackgroundLayer } from "@/components/ex-background-layer";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { LogEntry, TauriImportTemplateResult } from "@/lib/bindings";
 import { commands } from "@/lib/bindings";
@@ -161,6 +162,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 			/>
 			<QueryClientProvider client={queryClient}>
 				<TooltipProvider>
+					<ExBackgroundLayer />
 					<div lang={i18n.language} className="contents">
 						<Suspense fallback={<Loading />}>{children}</Suspense>
 					</div>

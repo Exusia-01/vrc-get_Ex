@@ -85,6 +85,10 @@ export const commands = {
 	exGetSettings: () => __TAURI_INVOKE<ExSettings>("ex_get_settings"),
 	exSetSettings: (settings: ExSettings) => __TAURI_INVOKE<null>("ex_set_settings", { settings }),
 	exProjectApplyPendingChanges: (projectPath: string, changesVersion: number, excludedPackages: string[]) => __TAURI_INVOKE<null>("ex_project_apply_pending_changes", { projectPath, changesVersion, excludedPackages }),
+	exGetPackageDependencies: (name: string, version: string) => __TAURI_INVOKE<([string, string])[]>("ex_get_package_dependencies", { name, version }),
+	exPickBackgroundImage: () => __TAURI_INVOKE<string | null>("ex_pick_background_image"),
+	exGetBackgroundImage: () => __TAURI_INVOKE<string | null>("ex_get_background_image"),
+	exClearBackgroundImage: () => __TAURI_INVOKE<null>("ex_clear_background_image"),
 	exTerminalRun: (cwd: string, command: string) => __TAURI_INVOKE<ExTerminalOutput>("ex_terminal_run", { cwd, command }),
 	exUpmGetManifest: (projectPath: string) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_get_manifest", { projectPath }),
 	exUpmSetDependency: (projectPath: string, name: string, versionOrUrl: string) => __TAURI_INVOKE<ExUpmManifest>("ex_upm_set_dependency", { projectPath, name, versionOrUrl }),
@@ -156,6 +160,17 @@ export type ExThemeSettings = {
 	gradient_start: string | null,
 	gradient_end: string | null,
 	accent_color: string | null,
+	accent_auto_contrast: boolean,
+	surface_opacity: number | null,
+	surface_radius_rem: number | null,
+	background_image: string | null,
+	bg_image_opacity: number | null,
+	bg_image_fit: string | null,
+	bg_image_position: string | null,
+	bg_fade_top: number | null,
+	bg_fade_bottom: number | null,
+	bg_fade_left: number | null,
+	bg_fade_right: number | null,
 };
 
 export type ExTerminalSettings = {

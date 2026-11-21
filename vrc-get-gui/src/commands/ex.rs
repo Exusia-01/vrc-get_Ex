@@ -15,15 +15,19 @@
 
 use crate::commands::prelude::*;
 use crate::state::{ExSettings, ExUpmRegistry};
+use base64::Engine;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::str::FromStr;
 use std::time::Duration;
-use tauri::State;
+use tauri::{State, Window};
+use tauri_plugin_dialog::DialogExt;
 use tokio::process::Command;
 use vrc_get_vpm::environment::PackageInstaller;
 use vrc_get_vpm::io::DefaultEnvironmentIo;
+use vrc_get_vpm::version::{StrictEqVersion, Version};
 
 // ---------- EX settings ----------
 
@@ -88,6 +92,162 @@ pub async fn ex_project_apply_pending_changes(
         .await?;
 
     update_project_last_modified(&io, unity_project.project_dir()).await;
+    Ok(())
+}
+
+// ---------- Package version dependencies (Alt+click in the version list) ----------
+
+/// ALCOM-Ex: returns the VPM dependencies (`(name, version range)` pairs)
+/// declared by one specific package version, looked up in the currently
+/// loaded environment package collection. The stock package list data only
+/// carries dependency names, so the ranges are fetched here on demand.
+#[tauri::command]
+#[specta::specta]
+pub async fn ex_get_package_dependencies(
+    packages: State<'_, PackagesState>,
+    name: String,
+    version: String,
+) -> Result<Vec<(String, String)>, RustError> {
+    let Some(packages) = packages.get() else {
+        return Err(RustError::unrecoverable_str(
+            "Internal Error: environment version mismatch",
+        ));
+    };
+    let Ok(version) = Version::from_str(&version) else {
+        return Err(RustError::unrecoverable_str("bad version"));
+    };
+    let Some(pkg) = packages
+        .packages()
+        .iter()
+        .find(|p| p.name() == name && StrictEqVersion(p.version()) == StrictEqVersion(&version))
+    else {
+        return Err(RustError::unrecoverable_str("package not found"));
+    };
+    Ok(pkg
+        .vpm_dependencies()
+        .iter()
+        .map(|(dep_name, range)| (dep_name.to_string(), range.to_string()))
+        .collect())
+}
+
+// ---------- Background image ----------
+
+fn ex_config_dir(io: &DefaultEnvironmentIo) -> PathBuf {
+    io.resolve(crate::ex::EX_CONFIG_DIR.as_ref())
+}
+
+/// ALCOM-Ex: opens a file picker for a background image, copies the chosen
+/// file into the EX config folder as `background-image.<ext>` and returns
+/// that file name. Returns `None` when the picker was cancelled. Any image
+/// format is accepted at this level; whether it can be displayed (and
+/// animated) depends on the web view's image decoders.
+#[tauri::command]
+#[specta::specta]
+pub async fn ex_pick_background_image(
+    window: Window,
+    io: State<'_, DefaultEnvironmentIo>,
+) -> Result<Option<String>, RustError> {
+    let Some(path) = window
+        .dialog()
+        .file()
+        .set_parent(&window)
+        .add_filter(
+            "Image",
+            &[
+                "png", "jpg", "jpeg", "gif", "webp", "apng", "bmp", "svg", "avif", "ico", "tif",
+                "tiff", "jxl",
+            ],
+        )
+        .blocking_pick_file()
+        .map(|x| x.into_path_buf())
+        .transpose()?
+    else {
+        return Ok(None);
+    };
+
+    let extension = path
+        .extension()
+        .and_then(|x| x.to_str())
+        .filter(|x| x.chars().all(|c| c.is_ascii_alphanumeric()) && x.len() <= 8)
+        .map(|x| x.to_ascii_lowercase())
+        .unwrap_or_else(|| "png".to_string());
+    let file_name = format!("background-image.{extension}");
+
+    let dir = ex_config_dir(io.inner());
+    tokio::fs::create_dir_all(&dir).await?;
+    // remove a previously stored image with a different extension
+    let mut entries = tokio::fs::read_dir(&dir).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with("background-image.") && name != file_name {
+            tokio::fs::remove_file(entry.path()).await.ok();
+        }
+    }
+    tokio::fs::copy(&path, dir.join(&file_name)).await?;
+    Ok(Some(file_name))
+}
+
+fn background_image_mime(file_name: &str) -> &'static str {
+    match file_name.rsplit('.').next().unwrap_or_default() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "apng" => "image/apng",
+        "svg" => "image/svg+xml",
+        "bmp" => "image/bmp",
+        "avif" => "image/avif",
+        "ico" => "image/x-icon",
+        "tif" | "tiff" => "image/tiff",
+        "jxl" => "image/jxl",
+        _ => "application/octet-stream",
+    }
+}
+
+/// ALCOM-Ex: returns the stored background image as a `data:` URL, or
+/// `None` when no background image is configured / the file is gone.
+#[tauri::command]
+#[specta::specta]
+pub async fn ex_get_background_image(
+    state: State<'_, ExSettingsState>,
+    io: State<'_, DefaultEnvironmentIo>,
+) -> Result<Option<String>, RustError> {
+    let settings = state.get().await;
+    let Some(file_name) = settings.theme.background_image else {
+        return Ok(None);
+    };
+    // the stored value must be a plain file name, never a path
+    if Path::new(&file_name).file_name().and_then(|x| x.to_str()) != Some(file_name.as_str()) {
+        return Ok(None);
+    }
+    let path = ex_config_dir(io.inner()).join(&file_name);
+    match tokio::fs::read(&path).await {
+        Ok(bytes) => Ok(Some(format!(
+            "data:{};base64,{}",
+            background_image_mime(&file_name),
+            base64::engine::general_purpose::STANDARD.encode(bytes),
+        ))),
+        Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(RustError::unrecoverable(e)),
+    }
+}
+
+/// ALCOM-Ex: deletes the stored background image file, if any. The caller
+/// also clears `theme.background_image` in the EX settings.
+#[tauri::command]
+#[specta::specta]
+pub async fn ex_clear_background_image(
+    state: State<'_, ExSettingsState>,
+    io: State<'_, DefaultEnvironmentIo>,
+) -> Result<(), RustError> {
+    let settings = state.get().await;
+    if let Some(file_name) = settings.theme.background_image {
+        if Path::new(&file_name).file_name().and_then(|x| x.to_str()) == Some(file_name.as_str()) {
+            let path = ex_config_dir(io.inner()).join(&file_name);
+            tokio::fs::remove_file(path).await.ok();
+        }
+    }
     Ok(())
 }
 

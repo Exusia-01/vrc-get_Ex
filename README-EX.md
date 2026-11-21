@@ -2,7 +2,7 @@
 
 ALCOM-Ex is a fork of [ALCOM (vrc-get GUI)](https://github.com/vrc-get/vrc-get)
 that adds extra features. Base version: ALCOM `1.2.0-beta.2`, EX version
-`0.1.1`, displayed as **`1.2.0-beta.2-@Ex 0.1.1`**.
+`0.2.0`, displayed as **`1.2.0-beta.2-@Ex 0.2.0`**.
 
 ## Added features
 
@@ -36,6 +36,25 @@ that adds extra features. Base version: ALCOM `1.2.0-beta.2`, EX version
    slider, background gradient start/end colors, and an accent color that
    recolors the primary color scheme.
 7. **Orange icon** — The app icon's green parts are recolored orange.
+8. **Alt+click version dependencies** (since EX 0.2.0) — In the project's
+   package list, Alt+clicking a version in the version dropdown shows the
+   dependencies (names and version ranges) declared by that exact version
+   instead of selecting it.
+9. **Accent auto contrast (opt-in)** (since EX 0.2.0) — When enabled, the
+   text color on the accent color is automatically picked (white or
+   near-black) by WCAG contrast against the accent color's luminance.
+   Disabled by default; the stock behavior is unchanged.
+10. **Surface opacity and radius** (since EX 0.2.0) — The neutral section
+    surfaces (background, card, popover, secondary, muted, accent) can be
+    made translucent (opacity floored at 30%), and cards / dialogs get an
+    independent corner radius slider.
+11. **Background image** (since EX 0.2.0) — An image can be layered over
+    the gradient background with its own opacity, fit mode (cover /
+    contain / match window width / match window height / original size,
+    always preserving aspect ratio), 9-way anchor position, and per-edge
+    gradient fades. The image is copied into the EX config folder. Any
+    image format is accepted; rendering and animation (GIF, APNG,
+    animated WebP, ...) depend on the web view's decoders.
 
 ## Coexistence with stock ALCOM
 
@@ -59,7 +78,7 @@ breaking it:
   link handlers; they stay owned by stock ALCOM / VCC.
 
 Note on the version string: Cargo and npm require plain semver package
-versions, so `1.2.0-beta.2` stays in `Cargo.toml` and the `-@Ex 0.1.1`
+versions, so `1.2.0-beta.2` stays in `Cargo.toml` and the `-@Ex 0.2.0`
 suffix is appended at display time from a single source of truth
 (`vrc-get-gui/src/ex.rs`, mirrored as `exDisplayVersion` in
 `vrc-get-gui/package.json`).
