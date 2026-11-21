@@ -2,7 +2,7 @@
 
 ALCOM-Ex is a fork of [ALCOM (vrc-get GUI)](https://github.com/vrc-get/vrc-get)
 that adds extra features. Base version: ALCOM `1.2.0-beta.2`, EX version
-`0.1.0`, displayed as **`1.2.0-beta.2-@Ex 0.1.0`**.
+`0.1.1`, displayed as **`1.2.0-beta.2-@Ex 0.1.1`**.
 
 ## Added features
 
@@ -10,8 +10,11 @@ that adds extra features. Base version: ALCOM `1.2.0-beta.2`, EX version
    confirmation dialog, every dependency-driven change (an upgrade,
    downgrade, install or removal caused by another package's dependencies)
    has an "Exclude this change" checkbox. Excluded packages stay exactly as
-   they are. If an exclusion would break a package that is still being
-   installed, applying stops and shows the reasons.
+   they are. Exclusions are forced (since EX 0.1.1): even if a package that
+   is still being installed declares a dependency on an excluded package,
+   that dependency instruction is ignored and the remaining changes are
+   applied anyway. This is intentional, for overriding sloppy dependency
+   version ranges shipped by some packages.
 2. **Collapsible dependency details** — Each change in the confirmation
    dialog can be expanded to show the packages it depends on, the required
    version ranges, and the versions they resolve to.
@@ -56,7 +59,7 @@ breaking it:
   link handlers; they stay owned by stock ALCOM / VCC.
 
 Note on the version string: Cargo and npm require plain semver package
-versions, so `1.2.0-beta.2` stays in `Cargo.toml` and the `-@Ex 0.1.0`
+versions, so `1.2.0-beta.2` stays in `Cargo.toml` and the `-@Ex 0.1.1`
 suffix is appended at display time from a single source of truth
 (`vrc-get-gui/src/ex.rs`, mirrored as `exDisplayVersion` in
 `vrc-get-gui/package.json`).

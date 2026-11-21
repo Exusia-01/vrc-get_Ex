@@ -547,22 +547,24 @@ impl PendingProjectChanges<'_> {
     /// another package as a side effect, the user may keep the current state
     /// of selected packages instead.
     ///
-    /// Safety: the exclusion is rejected (with human-readable reasons) when
-    /// - an excluded change is a directly requested one, or
-    /// - a package that is still being installed requires an excluded package
-    ///   at a version the project will not have after exclusion.
-    pub fn exclude_packages(
-        &mut self,
-        excluded: &HashSet<&str>,
-        unity_project: &UnityProject,
-    ) -> Result<(), Vec<String>> {
+    /// The exclusion is intentionally forceful: there is NO dependency
+    /// satisfiability validation. If a package that is still being installed
+    /// declares a dependency on an excluded package (at a version the
+    /// project will not have), that dependency instruction is ignored and
+    /// the remaining changes are applied anyway. This is by user request:
+    /// some packages ship sloppy dependency version ranges, and the user
+    /// wants to override them rather than be blocked by a safety check.
+    ///
+    /// The only rejection left is excluding a change that was directly
+    /// requested (the UI never offers that; this is an invariant guard).
+    pub fn exclude_packages(&mut self, excluded: &HashSet<&str>) -> Result<(), Vec<String>> {
         if excluded.is_empty() {
             return Ok(());
         }
 
         let mut problems: Vec<String> = Vec::new();
 
-        // Phase 1: directly requested changes cannot be excluded.
+        // Directly requested changes cannot be excluded.
         for &name in excluded {
             match self.package_changes.get(name) {
                 Some(PackageChange::Install(install)) if install.to_dependencies.is_some() => {
@@ -584,62 +586,7 @@ impl PendingProjectChanges<'_> {
             return Err(problems);
         }
 
-        // Phase 2: compute the locked versions as they would be after
-        // applying the remaining (non-excluded) changes.
-        let mut resulting: HashMap<Box<str>, crate::version::Version> = HashMap::new();
-        for locked in unity_project.locked_packages() {
-            resulting.insert(locked.name().into(), locked.version().clone());
-        }
-        for (name, change) in &self.package_changes {
-            if excluded.contains(name.as_ref()) {
-                continue;
-            }
-            match change {
-                PackageChange::Install(install) => {
-                    if let Some(pkg) = install.install_package() {
-                        resulting.insert(name.clone(), pkg.version().clone());
-                    }
-                }
-                PackageChange::Remove(_) => {
-                    resulting.remove(name);
-                }
-            }
-        }
-
-        // Phase 3: every package still being installed must keep its
-        // dependencies satisfied by the resulting project state.
-        for (name, change) in &self.package_changes {
-            if excluded.contains(name.as_ref()) {
-                continue;
-            }
-            let Some(install) = change.as_install() else {
-                continue;
-            };
-            let Some(pkg) = install.install_package() else {
-                continue;
-            };
-            for (dep_name, range) in pkg.vpm_dependencies() {
-                if dep_name.as_ref() == name.as_ref() {
-                    continue;
-                }
-                match resulting.get(dep_name.as_ref()) {
-                    None => problems.push(format!(
-                        "{name} requires {dep_name} ({range}), but {dep_name} will not be \
-                         installed: its change was excluded and it is not currently installed"
-                    )),
-                    Some(version) if !range.matches(version) => problems.push(format!(
-                        "{name} requires {dep_name} ({range}), but {dep_name} will stay at \
-                         {version} because its change was excluded"
-                    )),
-                    _ => {}
-                }
-            }
-        }
-        if !problems.is_empty() {
-            return Err(problems);
-        }
-
-        // Phase 4: drop the excluded changes, their conflicts and the legacy
+        // Drop the excluded changes, their conflicts and the legacy
         // asset removals owned by excluded packages.
         self.package_changes
             .retain(|name, _| !excluded.contains(name.as_ref()));

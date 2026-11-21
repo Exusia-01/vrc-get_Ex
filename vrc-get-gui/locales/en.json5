@@ -656,7 +656,7 @@
     "projects:manage:dialog:ex:dependency not installed": "-> not installed",
     "projects:manage:dialog:ex:dependency excluded": "(change excluded)",
     "projects:manage:dialog:ex:excluded note": "This install will be skipped.",
-    "projects:manage:dialog:ex:excluded count": "{{count}} change(s) will be excluded and kept as-is. If an exclusion would break other packages, applying stops and shows the reasons.",
-    "projects:manage:dialog:ex:exclusion failed": "Cannot Apply with These Exclusions",
+    "projects:manage:dialog:ex:excluded count": "{{count}} change(s) will be excluded and kept as-is. Exclusions are forced: even if another package's dependency would no longer be satisfied, the remaining changes are applied anyway.",
+    "projects:manage:dialog:ex:exclusion failed": "Failed to Apply Changes",
   },
 }

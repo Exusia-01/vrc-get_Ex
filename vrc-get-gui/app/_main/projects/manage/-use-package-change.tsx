@@ -145,7 +145,7 @@ export async function applyChanges(
 					excludedPackages,
 				);
 			} catch (e) {
-				// Show why the exclusion cannot be applied and stop.
+				// Show the apply error and stop.
 				await openSingleDialog(ExclusionFailedDialog, {
 					message: errorMessage(e),
 				});
@@ -671,7 +671,7 @@ function ExChangeControls({
 	);
 }
 
-/** ALCOM-Ex: shown when an exclusion cannot be applied safely. */
+/** ALCOM-Ex: shown when applying with exclusions fails. */
 function ExclusionFailedDialog({
 	message,
 	dialog,

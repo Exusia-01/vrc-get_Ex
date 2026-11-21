@@ -644,7 +644,7 @@
     "projects:manage:dialog:ex:dependency not installed": "-> 未インストール",
     "projects:manage:dialog:ex:dependency excluded": "(変更を除外中)",
     "projects:manage:dialog:ex:excluded note": "このインストールはスキップされます。",
-    "projects:manage:dialog:ex:excluded count": "{{count}} 件の変更が除外され、現状のまま維持されます。除外により他のパッケージが壊れる場合は、理由を表示して適用を中止します。",
-    "projects:manage:dialog:ex:exclusion failed": "この除外では適用できません",
+    "projects:manage:dialog:ex:excluded count": "{{count}} 件の変更が除外され、現状のまま維持されます。除外は強制適用です：他のパッケージの依存条件を満たさなくなる場合でも、残りの変更はそのまま適用されます。",
+    "projects:manage:dialog:ex:exclusion failed": "適用に失敗しました",
   },
 }

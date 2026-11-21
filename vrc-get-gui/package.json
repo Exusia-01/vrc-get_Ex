@@ -2,7 +2,7 @@
 	"name": "vrc-get-gui",
 	"version": "0.1.0",
 	"exVersion": "0.1.0",
-	"exDisplayVersion": "1.2.0-beta.2-@Ex 0.1.0",
+	"exDisplayVersion": "1.2.0-beta.2-@Ex 0.1.1",
 	"type": "module",
 	"private": true,
 	"scripts": {

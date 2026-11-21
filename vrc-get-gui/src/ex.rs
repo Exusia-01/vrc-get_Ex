@@ -22,7 +22,7 @@
 use std::sync::LazyLock;
 
 /// The ALCOM-Ex version. Appended to the base ALCOM version with `-@Ex `.
-pub const EX_VERSION: &str = "0.1.0";
+pub const EX_VERSION: &str = "0.1.1";
 
 /// Folder (relative to the vrc-get data root) holding every EX-specific file.
 pub const EX_CONFIG_DIR: &str = "vrc-get-ex";

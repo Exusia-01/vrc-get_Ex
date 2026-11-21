@@ -47,9 +47,9 @@ pub async fn ex_set_settings(
 
 /// ALCOM-Ex variant of `project_apply_pending_changes` that first drops the
 /// pending changes of `excluded_packages` (dependency-driven changes the
-/// user chose to keep as-is). If excluding them would break the remaining
-/// changes, the whole apply is rejected with the reasons and nothing is
-/// applied.
+/// user chose to keep as-is). The exclusion is forceful by design: even if
+/// a remaining package declares a dependency on an excluded one, that
+/// dependency instruction is ignored and the rest is applied anyway.
 #[tauri::command]
 #[specta::specta]
 pub async fn ex_project_apply_pending_changes(
@@ -69,7 +69,7 @@ pub async fn ex_project_apply_pending_changes(
 
     if !excluded_packages.is_empty() {
         let excluded: HashSet<&str> = excluded_packages.iter().map(|x| x.as_str()).collect();
-        if let Err(problems) = changes.exclude_packages(&excluded, &unity_project) {
+        if let Err(problems) = changes.exclude_packages(&excluded) {
             return Err(RustError::unrecoverable_str(format!(
                 "The selected changes cannot be excluded:\n{}",
                 problems
