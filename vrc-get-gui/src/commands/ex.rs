@@ -29,9 +29,7 @@ use vrc_get_vpm::io::DefaultEnvironmentIo;
 
 #[tauri::command]
 #[specta::specta]
-pub async fn ex_get_settings(
-    state: State<'_, ExSettingsState>,
-) -> Result<ExSettings, RustError> {
+pub async fn ex_get_settings(state: State<'_, ExSettingsState>) -> Result<ExSettings, RustError> {
     Ok(state.get().await)
 }
 
@@ -111,17 +109,12 @@ pub struct ExTerminalOutput {
 /// restriction is enforced again here on the Rust side.
 #[tauri::command]
 #[specta::specta]
-pub async fn ex_terminal_run(
-    cwd: String,
-    command: String,
-) -> Result<ExTerminalOutput, RustError> {
+pub async fn ex_terminal_run(cwd: String, command: String) -> Result<ExTerminalOutput, RustError> {
     let dir = PathBuf::from(&cwd);
-    let dir = tokio::fs::canonicalize(&dir).await.map_err(|_| {
-        RustError::unrecoverable_str("terminal: working directory does not exist")
-    })?;
-    if !dir.is_dir()
-        || !(dir.join("Packages").is_dir() || dir.join("Assets").is_dir())
-    {
+    let dir = tokio::fs::canonicalize(&dir)
+        .await
+        .map_err(|_| RustError::unrecoverable_str("terminal: working directory does not exist"))?;
+    if !dir.is_dir() || !(dir.join("Packages").is_dir() || dir.join("Assets").is_dir()) {
         return Err(RustError::unrecoverable_str(
             "terminal: working directory must be a Unity project folder",
         ));
@@ -172,7 +165,9 @@ pub struct ExUpmManifest {
 }
 
 fn upm_manifest_path(project_path: &str) -> PathBuf {
-    Path::new(project_path).join("Packages").join("manifest.json")
+    Path::new(project_path)
+        .join("Packages")
+        .join("manifest.json")
 }
 
 async fn read_upm_manifest(project_path: &str) -> Result<serde_json::Value, RustError> {
@@ -246,9 +241,7 @@ fn manifest_to_ex(manifest: &serde_json::Value) -> ExUpmManifest {
 
 #[tauri::command]
 #[specta::specta]
-pub async fn ex_upm_get_manifest(
-    project_path: String,
-) -> Result<ExUpmManifest, RustError> {
+pub async fn ex_upm_get_manifest(project_path: String) -> Result<ExUpmManifest, RustError> {
     let manifest = read_upm_manifest(&project_path).await?;
     Ok(manifest_to_ex(&manifest))
 }
@@ -271,9 +264,9 @@ pub async fn ex_upm_set_dependency(
     let dependencies = root
         .entry("dependencies")
         .or_insert_with(|| serde_json::json!({}));
-    let dependencies = dependencies
-        .as_object_mut()
-        .ok_or_else(|| RustError::unrecoverable_str("manifest.json dependencies is not an object"))?;
+    let dependencies = dependencies.as_object_mut().ok_or_else(|| {
+        RustError::unrecoverable_str("manifest.json dependencies is not an object")
+    })?;
     dependencies.insert(name, serde_json::Value::String(version_or_url));
     write_upm_manifest(&project_path, &manifest).await?;
     Ok(manifest_to_ex(&manifest))
@@ -309,9 +302,9 @@ pub async fn ex_upm_add_scoped_registry(
     let registries = root
         .entry("scopedRegistries")
         .or_insert_with(|| serde_json::json!([]));
-    let registries = registries
-        .as_array_mut()
-        .ok_or_else(|| RustError::unrecoverable_str("manifest.json scopedRegistries is not an array"))?;
+    let registries = registries.as_array_mut().ok_or_else(|| {
+        RustError::unrecoverable_str("manifest.json scopedRegistries is not an array")
+    })?;
     // replace an existing registry with the same name, otherwise append
     registries.retain(|entry| entry.get("name").and_then(|x| x.as_str()) != Some(&registry.name));
     registries.push(serde_json::json!({
@@ -334,7 +327,8 @@ pub async fn ex_upm_remove_scoped_registry(
         .get_mut("scopedRegistries")
         .and_then(|x| x.as_array_mut())
     {
-        registries.retain(|entry| entry.get("name").and_then(|x| x.as_str()) != Some(name.as_str()));
+        registries
+            .retain(|entry| entry.get("name").and_then(|x| x.as_str()) != Some(name.as_str()));
     }
     write_upm_manifest(&project_path, &manifest).await?;
     Ok(manifest_to_ex(&manifest))

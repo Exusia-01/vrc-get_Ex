@@ -114,9 +114,7 @@ impl TauriPendingProjectChanges {
                     PackageChange::Install(install) if install.to_dependencies().is_some() => {
                         Some(name.to_string())
                     }
-                    PackageChange::Remove(remove)
-                        if remove.reason() == RemoveReason::Requested =>
-                    {
+                    PackageChange::Remove(remove) if remove.reason() == RemoveReason::Requested => {
                         Some(name.to_string())
                     }
                     _ => None,
